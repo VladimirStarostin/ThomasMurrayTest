@@ -36,7 +36,7 @@ namespace ThomasMurray
             {"девятнадцат", new ValueAndEndings(19, CommonTensEndings)},
             {"двадцат",     new ValueAndEndings(20, CommonTensEndings)},
             {"тридцат",     new ValueAndEndings(30, CommonTensEndings)},
-            {"сорок",       new ValueAndEndings(40, new string[]{"а", "у"})},
+            {"сорок",       new ValueAndEndings(40, new string[]{string.Empty, "а", "у"})},
 
             {"пятьдесят",    new ValueAndEndings(50, new string[]{})},
             {"пятидесяти",   new ValueAndEndings(50, new string[]{})},

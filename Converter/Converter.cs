@@ -8,10 +8,9 @@ namespace ThomasMurray
     public class ThreeDigitsConverter
     {
         private const string ERROR_MSG = "* Ошибка *";
-        private const string NON_ALPHANUM_REGEX_PATTERN = @"[^\w\s\-]*";
-
         private static Dictionary<string, ushort> _allDigits = new Dictionary<string, ushort>();
-        private static char[] _sentenseDelimeters = new[] { ';', '.' };
+        private static char[] _sentenseDelimeters = new[] { ';', '.', '!', '?' };
+        private static char[] _wordsDelimeters = new[] { ' ', ';', '.', '+', '-', '/', '=', '(', ')', '&', '~' };
         private static Dictionary<string, ushort> _allOrderDelimitingWords = new Dictionary<string, ushort>();
 
         static ThreeDigitsConverter()
@@ -34,9 +33,27 @@ namespace ThomasMurray
             }
         }
 
-        public string Convert(string stringItem)
+        public string ConvertNumericsInText(string inputText)
         {
-            return null;
+            if (string.IsNullOrWhiteSpace(inputText))
+                return string.Empty;
+
+            foreach (var sentense in inputText.Split(_sentenseDelimeters))
+            {
+                if (string.IsNullOrWhiteSpace(sentense))
+                    continue;
+
+                string handledSentense = sentense;
+                foreach (var stringNumericExpression in FindNumericExpressionsInSentense(sentense))
+                {
+                    var resultedNumber = CalculateSingleNumericExpression(stringNumericExpression);
+                    var handledSentencePrev = Regex.Replace(handledSentense, stringNumericExpression, resultedNumber?.ToString() ?? ERROR_MSG);
+                    inputText = Regex.Replace(inputText, handledSentense, handledSentencePrev);
+                    handledSentense = handledSentencePrev;
+                }
+            };
+
+            return inputText;
         }
 
         internal long? CalculateSingleNumericExpression(string inputNumericExpression)
@@ -50,7 +67,7 @@ namespace ThomasMurray
             {
                 currentOrderMultiplier = ConvertOrderMultiplierText(orderExpression);
                 var lastWord = orderExpression.Split(' ').Last();
-                if(_allOrderDelimitingWords.TryGetValue(lastWord, out currentOrderLogPower) == false)
+                if (_allOrderDelimitingWords.TryGetValue(lastWord, out currentOrderLogPower) == false)
                 {
                     currentOrderLogPower = 0;
                 }
@@ -58,35 +75,7 @@ namespace ThomasMurray
             }
             return result;
         }
-        
-        internal string[] SplitByOrders(string numericExpressionText)
-        {
-            if (string.IsNullOrWhiteSpace(numericExpressionText))
-                return null;
 
-            var splittedWords = numericExpressionText.Split(' ');
-            var orderDelimiterWordsIdxs = new List<int>(new[] { 0 });
-            var wordIdx = 1;
-            foreach (var word in splittedWords)
-            {
-                if (_allOrderDelimitingWords.ContainsKey(word))
-                    orderDelimiterWordsIdxs.Add(wordIdx);
-
-                wordIdx ++;                
-            }
-
-            if(orderDelimiterWordsIdxs.Any() == false)
-                return null;
-
-            orderDelimiterWordsIdxs.Add(splittedWords.Length);
-            var result = new string[orderDelimiterWordsIdxs.Count - 1];
-            for (int i = 0; i < orderDelimiterWordsIdxs.Count - 1; i++)
-            {
-                result[i] = string.Join(' ', splittedWords.Skip(orderDelimiterWordsIdxs[i]).Take(orderDelimiterWordsIdxs[i + 1] - orderDelimiterWordsIdxs[i]));
-            }
-            return result;
-        }
-        
         internal string[] FindNumericExpressionsInSentense(string sentense)
         {
             if (string.IsNullOrWhiteSpace(sentense))
@@ -95,19 +84,18 @@ namespace ThomasMurray
             var sequences = new List<List<string>>();
             bool expressionFound = false;
 
-            foreach (var word in sentense.Split(' '))
+            foreach (var word in sentense.Split(_wordsDelimeters))
             {
-                var trimmedWord = Regex.Replace(word.ToLowerInvariant(), NON_ALPHANUM_REGEX_PATTERN, string.Empty);
-                bool match = _allDigits.ContainsKey(trimmedWord) || _allOrderDelimitingWords.ContainsKey(trimmedWord);
+                bool match = _allDigits.ContainsKey(word) || _allOrderDelimitingWords.ContainsKey(word);
 
                 if (match == true && expressionFound == false)
                 {
                     expressionFound = true;
-                    sequences.Add(new List<string>(new[] { trimmedWord }));
+                    sequences.Add(new List<string>(new[] { word }));
                 }
                 else if (match == true && expressionFound == true)
                 {
-                    sequences.Last().Add(trimmedWord);
+                    sequences.Last().Add(word);
                 }
                 else if (match == false)
                 {
@@ -122,6 +110,34 @@ namespace ThomasMurray
                 result[idx++] = string.Join(' ', numericWordsSequence);
             }
 
+            return result;
+        }
+
+        internal string[] SplitByOrders(string numericExpressionText)
+        {
+            if (string.IsNullOrWhiteSpace(numericExpressionText))
+                return null;
+
+            var splittedWords = numericExpressionText.Split(' ');
+            var orderDelimiterWordsIdxs = new List<int>(new[] { 0 });
+
+            var wordIdx = 1;
+            foreach (var word in splittedWords)
+            {
+                if (_allOrderDelimitingWords.ContainsKey(word.ToLowerInvariant()))
+                    orderDelimiterWordsIdxs.Add(wordIdx);
+
+                wordIdx++;
+            }
+
+            if (orderDelimiterWordsIdxs.Contains(splittedWords.Length) == false)
+                orderDelimiterWordsIdxs.Add(splittedWords.Length);
+
+            var result = new string[orderDelimiterWordsIdxs.Count - 1];
+            for (int i = 0; i < orderDelimiterWordsIdxs.Count - 1; i++)
+            {
+                result[i] = string.Join(' ', splittedWords.Skip(orderDelimiterWordsIdxs[i]).Take(orderDelimiterWordsIdxs[i + 1] - orderDelimiterWordsIdxs[i]));
+            }
             return result;
         }
 
@@ -143,11 +159,11 @@ namespace ThomasMurray
                     lastDidgitOrder = currentDigitOrder;
                     result += digitizedStr;
                 }
-                else if(_allOrderDelimitingWords.TryGetValue(split.ToLowerInvariant().Trim(), out _) && result == 0)
+                else if (_allOrderDelimitingWords.TryGetValue(split.ToLowerInvariant().Trim(), out _) && result == 0)
                 {
                     return 1;
                 }
-                else if(result == 0)
+                else if (result == 0)
                 {
                     return null;       //  не нашлось цифр
                 }
