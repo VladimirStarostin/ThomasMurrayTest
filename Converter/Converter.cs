@@ -5,7 +5,7 @@ using System.Text.RegularExpressions;
 
 namespace ThomasMurray
 {
-    public class ThreeDigitsConverter
+    public class DigitsConverter
     {
         private const string ERROR_MSG = "* Ошибка *";
         private static Dictionary<string, ushort> _allDigits = new Dictionary<string, ushort>();
@@ -13,7 +13,7 @@ namespace ThomasMurray
         private static char[] _wordsDelimeters = new[] { ' ', ';', '.', '+', '-', '/', '=', '(', ')', '&', '~' };
         private static Dictionary<string, ushort> _allOrderDelimitingWords = new Dictionary<string, ushort>();
 
-        static ThreeDigitsConverter()
+        static DigitsConverter()
         {
             ConvertCollection(_allDigits, ValueableDigitsStore.Digits);
             ConvertCollection(_allOrderDelimitingWords, ValueableDigitsStore.OrderWords);
